@@ -1,0 +1,483 @@
+---
+title: "QMM1002 Case Study 2"
+author: "Tolulope Ajimoko"
+date: "2023-12-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+```
+
+## Introduction
+
+**How does the study hours of Cambrian College's analytics student across programs compare to each other?**
+**Are My Study Goals Met?**
+
+This study builds on the first case study to analyze a larger collection of data spanning 2 semesters to provides an insight into my study habits. For this study I analyzed both personalized data and aggregrated data for Analytics students in BAPG, CAGC, or HAGC programs at Cambriam College. I collected personalized data daily for different variables over 201 days from 21st May 2023 to 7th December 2023 to analyze if I am keeping up with my study goals. The variables I collected for this study are described below:
+
+Variable  | Type
+------------- | -------------
+Date | Identifier 
+Hours in Class  | Quantitative  (Number of hours spent attending class on zoom or watching Zoom recording)
+Hours Studiying  | Quantitative   (Number of hours spent on schoolwork, excluding time spent watching attending class on zoom or watching Zoom recording)
+Hours Sleeping  | Quantitative  (Number of hours spent sleeping)
+Cups of Water | Quantitative  (Number of cups of water drank)
+Watch the News (Y/N)  | Categorical  (Number of hours spent watching the news)
+Type of Exercise  | Categorical  (The type of exercise done)
+Intensity of Exercise (H/M/L)  | Categorical  (Intensity of the exercise carried out)
+Time Spent Exercising (mins)  | Quantitative  (Number of minutes spent exercising)
+Term  | Categorical (Categorizes the datapoints as either Summer or Fall semesters)
+
+The aggregrated data also was also collected for the Analytics students on the Date, Hours Studiying, Semester, and Program variables. <br/><br/>
+
+
+#### Summary Statistics
+
+```{r}
+personalized<-read.csv(file="Ajimoko_Tolulope_Personalized_Data.csv", header=TRUE)
+personalized.studymean<-mean(personalized$Study, na.rm=TRUE)
+personalized.studysd<-sd(personalized$Study, na.rm=TRUE)
+#mean(students$Study, Program==BAPG, na.rm=TRUE)
+
+students<-read.csv(file="Combined.csv", header=TRUE, fileEncoding="UTF-8-BOM")
+BAPG.mean <- mean(students$Study[students$Program == "BAPG"], na.rm = TRUE)
+BAPG.sd <- sd(students$Study[students$Program == "BAPG"], na.rm = TRUE)
+
+CAGC.mean <- mean(students$Study[students$Program == "CAGC"], na.rm = TRUE)
+CAGC.sd <- sd(students$Study[students$Program == "CAGC"], na.rm = TRUE)
+
+HAGC.mean <- mean(students$Study[students$Program == "HAGC"], na.rm = TRUE)
+HAGC.sd <- sd(students$Study[students$Program == "HAGC"], na.rm = TRUE)
+```
+
+Data Set | Mean | Standard Deviation
+------------- | ------------- | ------------- 
+personal | `r mean(personalized$Study, na.rm=TRUE)` | `r sd(personalized$Study, na.rm=TRUE)`
+All Students | `r mean(students$Study, na.rm=TRUE)` | `r sd(students$Study, na.rm=TRUE)`
+BAPG | `r mean(students$Study[students$Program == "BAPG"], na.rm = TRUE)` |`r sd(students$Study[students$Program == "BAPG"], na.rm = TRUE)`
+CAGC |`r mean(students$Study[students$Program == "CAGC"], na.rm = TRUE)` |`r sd(students$Study[students$Program == "CAGC"], na.rm = TRUE)`
+HAGC | `r mean(students$Study[students$Program == "HAGC"], na.rm = TRUE)` |`r sd(students$Study[students$Program == "HAGC"], na.rm = TRUE)`
+
+
+The purpose of this study is to answer the following questions:<br/>
+
+i)	Are there differences in the average study times for students in the different programs?
+ii) Is the distribution of days studied more than 3.13 hours (the average daily study time for students at McGill) the same for students in the different programs (i.e. are the noumber of hours studies by the students independent of program)?
+ii)	How does my personal study time change over the two semesters? <br/><br/>
+
+
+These questions will be answered by analyzing the 'Hours Spent Studying' and 'Term' variables by performing the following statistical analysis: <br/>
+
+i) Performing ANOVA test to determine if there is a differences in the average study times for students in the different programs <br/>
+ii) Performing the Chi-square test to determine if the distribution of days studied more than 3.13 hours is the same for students in the different programs <br/>
+iii) Performing a Time Series Analysis to find out how my personal study time has changed. At the end of the study, I will be able to find out how my studying has varied over time and how analytics students have been studying. <br/><br/>
+
+
+
+
+## Analysis
+
+### Part 1: ANOVA Test <br/>
+
+```{r, results='hide', warning=FALSE, message=FALSE}
+# Installing packages
+options(repos = c(CRAN = "https://cran.r-project.org"))
+install.packages("dplyr", quiet = TRUE)
+install.packages("car", quiet = TRUE)
+library(dplyr)
+library(car)
+```
+
+
+#### Stating Hypothesis
+##### Null and alternative hypothesis
+
+$H_0: \muBAPG=\muCAGC=\muHAGC$ <br/>
+$H_A:$ At least one mean in different <br/><br/>
+
+#### Preparing the Data for analysis <br/>
+```{r}
+# creating subsets
+BAPG <- subset(students, select=c("Program", "Study"), Program == "BAPG")
+CAGC <- subset(students, select=c("Program", "Study"), Program == "CAGC")
+HAGC <- subset(students, select=c("Program", "Study"), Program == "HAGC")
+
+# selecting 50 random samples from each group
+set.seed(123) 
+BAPG_sample <- BAPG %>% sample_n(50)
+CAGC_sample <- CAGC %>% sample_n(50)
+HAGC_sample <- HAGC %>% sample_n(50)
+
+# combining the samples
+analytics <- bind_rows(BAPG_sample, CAGC_sample, HAGC_sample)
+
+```
+
+
+#### Performing the ANOVA test
+```{r}
+analytics.anova<-aov(Study~Program, analytics)
+summary(analytics.anova)     
+```
+p-value = 0.063 which is greater that alpha of 0.05 <br/><br/>
+
+**Decision** <br/>
+We fail to reject the null hypothesis <br/><br/>
+
+**Interpretation** <br/>
+There is no substantial evidence that at least one mean is different. i.e. not enough evidence that the number of hours studied is the different across programs. <br/><br/>
+
+
+
+#### Checking if the conditions required for using ANOVA are met 
+
+**Randomization and Independence Assumption** <br/>
+The samples were randomly selected and the data for one day does not affect the data for another day. <br/>
+
+**Equal Variance Assumption** 
+```{r}
+boxplot(Study~Program, analytics, main="Comparison of the Study Hours in 3 Programs", col=c("red", "blue", "green" )) 
+```
+
+The variance are somewhat similar in range. Although BAPG has a tight variance and some outliers. However the difference is not outrageous so we accept that the equal variance assumption is met <br/><br/>
+
+
+***Nearly Normal Population***
+
+```{r}
+hist(analytics$Study, xlab="Study Hours", main="Hours Spent Studying")
+boxplot(analytics$Study, ylab="Study Hours", main="Hours Spent Studying")
+```
+<br/> This histogram is right skewed and the boxplot has an outlier, howerver the skewness is not outrageous. We will accept that the nearly normal condition is met for the purpose of this study. <br/><br/>
+
+
+
+### Performing Tukey’s HSD test to determine the different mean
+```{r}
+TukeyHSD(analytics.anova, conf.level=0.95)
+```
+None of the means seem to be significantly different <br/><br/>
+
+
+#### Creating a bar plot for of gouped mean
+```{r, results='hide', warning=FALSE, message=FALSE}
+# Installing Packages
+install.packages("ggplot2", quiet = TRUE)
+library(ggplot2)
+```
+
+```{r}
+ggplot(analytics, aes(factor(Program), Study, fill=factor(Program)))+
+  stat_summary(fun.y="mean", geom="bar")+
+  stat_summary(fun.data=mean_cl_normal, geom="errorbar", width=0.2)+
+  labs(x="Program", y="Study Hours", title="Study hours in 3 Analytics programs")+
+  scale_fill_brewer(palette="Set3")
+```
+
+ Although HAGC have higher mean than other, and CAGC than BAPG, the 95% confidence interval for all 3 programs overlap, which suggests no significant difference in their means.
+
+
+
+### Part 2: Chi-square Test
+
+#### Adding new category
+```{r}
+analytics$HoursCategory<-ifelse(analytics$Study>3.13, "Above", "Below")
+
+analytics.hours<-table(analytics$HoursCategory, analytics$Program)    
+```
+
+
+##### Null and alternative hypothesis
+
+$H_0:$ There is no difference in the distribution of above 3.13 study hours days and below 3.13 study hours days across programs <br/>
+$H_A:$ There is a difference in the distribution of above 3.13 study hours days and below 3.13 study hours days across programs <br/><br/>
+
+
+#### Performing the Chi-square test
+```{r}
+analytics_chisq <- chisq.test(analytics.hours)
+analytics_chisq
+```
+p-value 0.195 is greater than 0.05 <br/><br/>
+
+**Decision** <br/>
+We fail to reject the null hypothesis <br/><br/>
+
+**Interpretation** <br/>
+There is significant evidence that the distribution of above 3.13 study hours days and below 3.13 study hours days are the same across programs <br/><br/>
+
+
+
+#### Checking if the conditions required for using Chi-square Test are met 
+
+**Counted Data Condition** : The categories BAPG, CAGC, and HAGC are counted <br/>
+
+**Independence Assumption** : There is no reason for the data not to be indepented as they were randomly selected <br/>
+
+**Randomization Assumption** : The samples were randomly selected <br/>
+
+**Expected Cell Frequency/Sample Size Condition** : The expected cell frequency is > 5 for each category (50 for each) <br/><br/>
+
+
+
+#### Plots to support findings
+
+
+**Extracting the residuals**
+```{r}
+analytics.residuals <- analytics_chisq$residuals
+analytics.residuals
+```
+
+Residuals for all the observed values are less than 1 standard deviation from the expected values <br/><br/>
+
+
+**Extracting expected values and plotting**
+```{r, results='hide', warning=FALSE, message=FALSE}
+library(reshape2)
+library(ggplot2)
+```
+
+
+```{r}
+
+# Preparing the data
+expected.analytic<-analytics_chisq$expected
+
+obs<-data.frame(melt(analytics.hours, value.name = "Count"), 
+              Distribution=rep("Obs", length(analytics.hours)))
+exp<-data.frame(melt(expected.analytic, value.name = "Count"), 
+              Distribution=rep("Exp", length(expected.analytic)))
+analytics.reshape<-rbind(obs, exp)
+colnames(analytics.reshape)<-c("Category", "Program",  "Count", "Distribution")
+
+```
+
+
+```{r}
+# Creating the plot
+ggplot(analytics.reshape, aes(Distribution, Count, fill=Category))+
+  geom_bar(stat="identity")+
+  facet_grid(~Program)+
+  labs(title="Chi-Square Analysis for Students' Study Hours")
+
+```
+ <br/> The distribution of above 3.13 study hours days and below 3.13 study hours days seem relatively the same for across programs. Only BAPG has slightly different values which is not significant <br/>
+
+
+
+```{r}
+# Creating Plots cont'd
+colnames(obs)<-c("Category", "Program",  "Count", "Distribution")
+
+#Association Plot
+assocplot(analytics.hours, xlab="Category", ylab="Program",
+          main="Association Plot for Students' Study Hours")
+
+#Mosaic Plot
+mosaicplot(analytics.hours, shade=TRUE, 
+           xlab="Category", ylab="Program",
+           main="Mosaic Plot for Students' Study Hours")
+
+```
+<br/> **Interpretation** <br/>
+Association Plot: The plots for above and below 3.13 groups seem the same accross all programs <br/>
+
+Mosaic Plot: No observed colors in all programs. None of them is different <br/>
+
+Distribution of above 3.13 study hours days and below 3.13 study hours days seem relatively the same for across programs <br/><br/>
+
+
+
+
+### Part 3: Time Series Analysis
+
+#### Preparing the dataset <br/>
+
+```{r, results='hide', warning=FALSE, message=FALSE}
+# Installing Packages
+install.packages("zoo", quiet = TRUE)
+library(zoo)
+install.packages("forecast", quiet = TRUE)
+library(forecast)
+```
+
+```{r}
+personalized<-read.csv("Ajimoko_Tolulope_Personalized_Data.csv", header=TRUE)
+personalized$Date <- as.Date(personalized$Date,format="%m/%d/%Y") 
+personalized.zoo <- zoo(personalized[,3],personalized[,1]) #remove all columns except study time and set dates to index
+personalized.all <- merge(personalized.zoo,zoo(,seq(start(personalized.zoo),end(personalized.zoo),by="day")), all=TRUE) #include all missing dates
+personalized.subset<- na.contiguous(personalized.all)
+```
+
+
+#### Making a time series with the longest stretch of dates
+```{r}
+L<-7
+
+personalized.ts<-ts(personalized.subset, frequency = L)
+plot(decompose(personalized.ts), col="blue")
+
+#plot.ts(personalized.ts, xlab="Days since May 21, 2023", ylab="Hours Studied", main="Time Series Plot of Study Data")
+```
+Not cyclical in pattern <br/>
+Fairly consistent then slight upward trend<br/>
+Strong seasonality. Repeated patterns in dips and peaks <br/>
+Fairly random though there are some unexpected irregularities in peaks and dips <br/><br/>
+
+
+
+#### The Best Moving Average Model
+
+The best Moving Average model for the time series data is the Holt Winter Exponential Smoothing Model <br/>
+The time series has trend and seasonality <br/><br/>
+
+```{r, results='hide', warning=FALSE, message=FALSE}
+install.packages("data.table", quiet = TRUE)
+library(data.table)
+install.packages("TTR", quiet = TRUE)
+library(TTR)
+```
+
+
+```{r}
+# Creating 5-days, 7-days and 10-days moving average models
+personalized.ma5<-SMA(personalized.ts, n=5)
+personalized.ma7<-SMA(personalized.ts, n=7)
+personalized.ma10<-SMA(personalized.ts, n=10)
+
+
+# Computing MSE, MAD/MAE, and MAPE errors
+ERRORS<-function(data, L){
+  ma.data<-SMA(data, n=L)
+  error<-NULL
+  for (i in 1:length(data)-L){
+    error[i]<-data[i+L]-ma.data[i+L-1]
+  }
+  error.p<-NULL
+  for(i in 1:length(data)-L){
+    error.p[i]<-abs(data[i+L]-ma.data[i+L-1])/abs(data[i+L])
+  }
+  MSE<-mean(error^2)
+  MAD<-mean(abs(error))
+  MAPE<-mean(error.p)*100
+  error.df<-data.frame(errors=c(MSE, MAD, MAPE), row.names=c("MSE", "MAD", "MAPE"))
+  return(error.df)
+}
+
+# calculating error ma5
+ERRORS(personalized.ts, 5)
+
+```
+
+```{r}
+
+# calculating error ma7
+ERRORS(personalized.ts, 7)
+
+```
+
+```{r}
+# calculating error ma10
+ERRORS(personalized.ts, 10)
+
+```
+The 7 moving average model is the best  <br/>
+The MSE and MAD for the 7 days moving average is lowest  <br/>
+
+
+```{r}
+# Plotting the ma7 model
+plot.ts(cbind(personalized.ts, personalized.ma7), 
+        plot.type = "s", 
+        col=c("black", "red"), 
+        xlab="Days since May 21", 
+        ylab="Return", 
+        main="Trend of Study Hours from May 21 to Dec 9")
+legend("bottomright", legend=c("Data", "MA-7"), col=c("black", "red"), lty=1)
+
+```
+
+#### Appropriate Exponential Smoothing Model
+
+```{r}
+
+personalized.ses<-HoltWinters(personalized.ts, beta = FALSE, gamma = FALSE)
+
+personalized.hes<-HoltWinters(personalized.ts, gamma = FALSE)
+
+personalized.hw<-HoltWinters(personalized.ts)
+personalized.hw$alpha #0.689
+personalized.hw$beta #0
+personalized.hw$gamma #0.836
+# alpha for the Holt Winter model is somewhat weighted towards recent data points
+# beta for the Holt Winter model is fully weighted towards historical data points
+# gamma for the Holt Winter is heavily weighted towards recent data points
+
+
+# error metrics
+accuracy(forecast(personalized.ses))
+accuracy(forecast(personalized.hes))
+accuracy(forecast(personalized.hw))
+
+```
+The appropriate exponential smoothing model for the time series data is the Holt Winter Exponential Smoothing Model <br/>
+RMSE, MAE and MAPE are lowest in the Holt Winter Exponential Smoothing Model <br/>
+The time series has some trend and seasonality <br/><br/>
+
+
+```{r}
+#plotting the best model
+plot.ts(cbind(personalized.ts, personalized.hw$fitted[,1]), col=c("black", "blue"), plot.type="single", 
+        ylab="Hours Studied", main="Holt-Winters Exponential Smoothing for Study Data")
+legend("bottomright", legend=c("Data", "Optimal HW"),
+       col=c("black", "blue"), lty=1)
+
+```
+#### <br/> Forecasting with the best overall model <br/>
+
+The best overall model is the Holt Winter Exponential Smoothing Model  <br/><br/>
+```{r}
+personalized.forecast<-forecast(personalized.hw, h=5)
+personalized.forecast
+```
+
+
+```{r}
+# Plotting the forecast
+plot(personalized.forecast, xlab="Time", ylab="Hours Studied", main="Forecasted Values")
+```
+Study hours is Likely to trend downward in the next 5 days <br/><br/>
+
+
+
+## Conclusion
+For this study, I carried out the following investigations:
+
+#### ANOVA Test
+- I created a subset of subsets of 50 random samples for each of the programs (BAPG, CAGC, and HAGC programs) in the  aggregated dataset and tested the hypothesis that the mean number of hours studied is the same for all three programs at the 0.05 level of significance. The investigation showed that there is no substantial evidence that the number of hours studied is the different across programs. Therefore, we failed to reject the null hypothesis.<br/>
+
+- I performed the Tukey’s HSD test to find out which of the means is different if any and the result showed that none of the means is significantly different. <br/>
+
+- I plotted a bar plot of group means to support the finding. The plots showed visibly that there is no difference in the mean study hours across programs <br/><br/>
+
+
+#### Chi-square Test
+- I added a categorical variable to the data set used for the ANOVA test with two categories, 'Above' for the days with study hours are greater than 3.13 hours and 'Below' for the days with study hours are less than 3.13 hours. I used this updated data-set to perform a chi‐square test to determine if there is evidence that the distribution of 'Above' and 'Below' days is the same across programs (i.e. if they are independent of program). The Chi-square test showed that there is significant evidence that the distribution of above 3.13 study hours days and below 3.13 study hours days are the same across programs so we failed to reject the null hypothesis <br/><br/>
+
+- I created grouped bar plot for observed and expected values, mosaic plot, and association plot to support the findings. The plots show visibly that there is no difference in the distribution of days with study hours above 3.13 hours and days with study hours below 3.13 hours <br/><br/>
+
+
+#### Time Series Analysis
+- The final part of this study was carried out using personalized data collected for date and the number of hours studied per day over 201 days from 21st May 2023 to 7th December 2023. I prepared the data by coercing the date variable into a correct date format using the as.Date function and creating a subset of the data with contigous data(longest stretch of data) <br/>
+
+- I created a time series data for hours studied and created a plot of the decomposition of the time series. The plot showed that the time series is not cyclical in pattern and the 
+trend is fairly consistent then slight moving upward. It also shows strong seasonality and fairly normal randomness <br/>
+
+- I created the 5-days, 7-days, and 10-days moving average models and calculated their errors. I found out that the 7 moving average model is the best as the MSE and MAD for the 7 days moving average is lowest of all <br/>
+
+- I also created a Simple Exponential Smoothing Model, Halt Exponential Smoothing Model, and the Holt Winters Exponential Smoothing Model and calculated their errors. The result showed that the Holt Winter Exponential Smoothing Model is the best with the lowest RMSE, MAE and MAPE. Also, the trend and seasonality in the time series make it appropriate to use Holt Winter Exponential Smoothing Model for it <br/>
+
+- Using the errors, I discovered that the Holt Winters Exponential Smoothing Model  is the best overall model and I used the model to forecast my hours studied for the next five days and plotted it. The Plot showed that my study hours is Likely to trend downward in the next 5 days <br/>
+
